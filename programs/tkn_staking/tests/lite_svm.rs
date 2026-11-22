@@ -4,3 +4,6 @@ mod helpers;
 
 #[path = "lite_svm/test_initialize_pool.rs"]
 mod test_initialize_pool;
+
+#[path ="lite_svm/test_initialize_vault.rs"]
+mod test_initialize_vault;
