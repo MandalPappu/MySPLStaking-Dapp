@@ -18,7 +18,7 @@ use {
 // =====================================================
 
 
-pub fn derive_pool_PDA (staking_mint:&Pubkey) -> (Pubkey, u8) {
+pub fn derive_pool_pda (staking_mint:&Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[POOL_SEED, staking_mint.as_ref()], &PROGRAM_ID)
 }
@@ -28,7 +28,7 @@ pub fn derive_pool_PDA (staking_mint:&Pubkey) -> (Pubkey, u8) {
 // 2. DERIVE TOKEN AUTHORITY PDA
 // =====================================================
 
-pub fn derive_token_authority_PDA (pool:&Pubkey) -> (Pubkey, u8) {
+pub fn derive_token_authority_pda (pool:&Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[b"token_authority", pool.as_ref()], &PROGRAM_ID)
 }
@@ -37,7 +37,7 @@ pub fn derive_token_authority_PDA (pool:&Pubkey) -> (Pubkey, u8) {
 // 3. DERIVE USER STAKE PDA
 // =====================================================
 
-pub fn derive_user_stake_PDA(
+pub fn derive_user_stake_pda(
     pool: &Pubkey,
     user: &Pubkey,
 ) -> (Pubkey, u8) {

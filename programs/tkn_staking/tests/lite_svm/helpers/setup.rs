@@ -13,7 +13,8 @@ pub fn setup_svm() -> (LiteSVM, Keypair) {
 
     let mut svm = LiteSVM::new()
             .with_default_programs();
-    svm.add_program_from_file(PROGRAM_ID, "target/deploy/tkn_staking.so").expect("failed to load tkn_staking program!");
+    let program_bytes = include_bytes!("../../../../../target/deploy/tkn_staking.so");
+    svm.add_program(PROGRAM_ID, program_bytes).expect("failed to load tkn_staking program!");
 
     let payer = Keypair::new();
 

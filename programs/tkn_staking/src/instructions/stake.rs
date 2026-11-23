@@ -1,0 +1,142 @@
+use anchor_lang::prelude::*;
+
+use anchor_spl::token::{
+    self,
+    Token,
+    TokenAccount,
+    Transfer,
+};
+
+use crate::constants::POOL_SEED;
+use crate::error::StakingError;
+
+use crate::rewards::{
+    update_pool_reward,
+    update_user_reward,
+};
+
+use crate::states::{
+    StakingPool,
+    UserStake,
+};
+
+#[derive(Accounts)]
+pub struct Stake<'info> {
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [
+            POOL_SEED,
+            pool.staking_mint.as_ref()
+        ],
+        bump = pool.bump,
+        constraint = pool.staking_vault == staking_vault.key()
+            @ StakingError::InvalidPool
+    )]
+    pub pool: Account<'info, StakingPool>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"user_stake",
+            pool.key().as_ref(),
+            user.key().as_ref()
+        ],
+        bump = user_stake.bump,
+        constraint = user_stake.owner == user.key()
+            @ StakingError::Unauthorized
+    )]
+    pub user_stake: Account<'info, UserStake>,
+
+    /// CHECK: This account must match the signing user.
+    pub owner: UncheckedAccount<'info>,
+
+
+    #[account(
+        mut,
+        constraint = user_token_account.owner == user.key()
+            @ StakingError::Unauthorized,
+        constraint = user_token_account.mint == pool.staking_mint
+            @ StakingError::InvalidMint
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = pool.staking_vault,
+        constraint = staking_vault.mint == pool.staking_mint
+            @ StakingError::InvalidMint,
+        constraint = staking_vault.owner == pool.key()
+            @ StakingError::InvalidPool
+    )]
+    pub staking_vault: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+pub(crate) fn handler(
+    ctx: Context<Stake>,
+    amount: u64,
+) -> Result<()> {
+
+    require!(
+        amount > 0,
+        StakingError::InvalidAmount
+    );
+
+    let clock = Clock::get()?;
+
+    // Step 1: Update global pool rewards.
+    update_pool_reward(
+        &mut ctx.accounts.pool,
+        clock.unix_timestamp,
+    )?;
+
+    // Step 2: Update user's pending rewards.
+    update_user_reward(
+        &mut ctx.accounts.user_stake,
+        ctx.accounts.pool.reward_per_token_stored,
+    )?;
+
+    // Step 3: Transfer tokens from user to vault.
+    let cpi_accounts = Transfer {
+        from: ctx.accounts.user_token_account.to_account_info(),
+        to: ctx.accounts.staking_vault.to_account_info(),
+        authority: ctx.accounts.user.to_account_info(),
+    };
+
+    let cpi_context = CpiContext::new(
+        ctx.accounts.token_program.key(),
+        cpi_accounts,
+    );
+
+    token::transfer(
+        cpi_context,
+        amount,
+    )?;
+
+    // Step 4: Update user's staking balance.
+    let user_stake = &mut ctx.accounts.user_stake;
+
+    user_stake.amount = user_stake
+        .amount
+        .checked_add(amount)
+        .ok_or(StakingError::ArithmeticOverflow)?;
+
+    // Step 5: Update pool's total staking amount.
+    let pool = &mut ctx.accounts.pool;
+
+    pool.total_staked = pool
+        .total_staked
+        .checked_add(amount)
+        .ok_or(StakingError::ArithmeticOverflow)?;
+
+    msg!("Tokens staked successfully!");
+
+    msg!("Amount: {}", amount);
+
+    Ok(())
+}

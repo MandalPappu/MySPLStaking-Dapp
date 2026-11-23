@@ -1,8 +1,8 @@
 use {
     crate::helpers::{
         accounts::{
-            derive_pool_PDA,
-            derive_token_authority_PDA,
+            derive_pool_pda,
+            derive_token_authority_pda,
             get_pool_state
         },
         instructions::{initialize_pool_instruction, initialize_vaults_instruction},
@@ -23,8 +23,8 @@ fn test_initialize_vault_success() {
     create_mint(&mut svm, &payer, &reward_mint, 9);
 
     // Derive staking pool PDA.
-    let (pool, _) = derive_pool_PDA(&staking_mint.pubkey());
-    let (token_authority_pda, _) = derive_token_authority_PDA(&pool);
+    let (pool, _) = derive_pool_pda(&staking_mint.pubkey());
+    let (token_authority_pda, _) = derive_token_authority_pda(&pool);
 
     let reward_rate:u64 = 1_000;
 
